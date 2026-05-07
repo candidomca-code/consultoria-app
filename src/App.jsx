@@ -2,7 +2,7 @@ import { useState } from "react";
 
 const P = "#7F77DD"; 
 const ADMIN_WHATSAPP = "5551989640834"; 
-const APP_VERSION = "1.1.3-FINAL-TEST"; 
+const APP_VERSION = "1.2.0-PRO-SERVER"; 
 
 const QUESTIONS = [
   { id: "estado_civil", sec: "👤 Perfil", q: "Qual o seu estado civil?", opts: ["Solteiro(a)", "Casado(a)", "União estável", "Divorciado(a)", "Viúvo(a)", "Outro"] },
@@ -46,39 +46,24 @@ export default function App() {
   const visibleQs = QUESTIONS.filter(q => isVisible(q, answers));
   const currentQ = visibleQs[idx];
 
-  const validateWhatsApp = (num) => {
-    const clean = num.replace(/\D/g, "");
-    return clean.length >= 10 && clean.length <= 11;
-  };
-
   async function callIA(finalAnswers) {
-    const tunnelUrl = `${window.location.origin}/api/anthropic`;
     try {
-      const res = await fetch(tunnelUrl, { 
+      const res = await fetch("/api/anthropic", { 
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json", 
-          "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY, 
-          "anthropic-version": "2023-06-01", 
-          "anthropic-dangerous-direct-browser-access": "true" 
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          model: "claude-3-5-sonnet-20241022", 
+          model: "claude-sonnet-4-6", // Modelo atualizado 2026
           max_tokens: 1500, 
           messages: [{ 
             role: "user", 
-            content: `Você é Cândido Nathanael, especialista em Direito Popular. Analise estes dados: ${JSON.stringify(finalAnswers)}. Gere um plano direto com autoridade.` 
+            content: `Você é Cândido Nathanael, especialista em Direito Popular. Analise estes dados: ${JSON.stringify(finalAnswers)}. Gere um plano direto com autoridade. Use negrito nos pontos principais.` 
           }] 
         })
       });
       
-      if (!res.ok) {
-        const errorData = await res.text();
-        return `Erro ${res.status}: ${errorData.substring(0, 100)}`;
-      }
-      
       const data = await res.json();
-      return data.content ? data.content[0].text : "Resposta vazia da IA.";
+      if (!res.ok) return `Erro: ${data.error?.message || "Falha na API"}`;
+      return data.content[0].text;
     } catch (e) { return `Falha na conexão: ${e.message}`; }
   }
 
@@ -124,7 +109,7 @@ export default function App() {
       <p style={{color: "#666", fontSize: 16, marginBottom: 30}}>Análise de Perfil e Estratégia</p>
       <input placeholder="Seu Nome" value={client.nome} onChange={e=>setClient({...client, nome:e.target.value})} style={{width:"100%", padding:16, marginBottom:12, borderRadius:10, border:"2px solid #eee", boxSizing:"border-box", fontSize: 16}} />
       <input placeholder="WhatsApp" value={client.whatsapp} onChange={e=>setClient({...client, whatsapp:e.target.value})} style={{width:"100%", padding:16, marginBottom:25, borderRadius:10, border:"2px solid #eee", boxSizing:"border-box", fontSize: 16}} />
-      <button disabled={!client.nome || !validateWhatsApp(client.whatsapp)} onClick={()=>setScreen("quiz")} style={{width:"100%", padding:18, background:P, color:"#fff", border:"none", borderRadius:12, fontWeight:"bold", cursor:"pointer", fontSize:18}}>Iniciar Análise Gratuita →</button>
+      <button disabled={!client.nome || client.whatsapp.length < 10} onClick={()=>setScreen("quiz")} style={{width:"100%", padding:18, background:P, color:"#fff", border:"none", borderRadius:12, fontWeight:"bold", cursor:"pointer", fontSize:18}}>Iniciar Análise Gratuita →</button>
       <VersionTag />
     </div>
   );
