@@ -2,6 +2,7 @@ import { useState } from "react";
 
 const P = "#7F77DD"; 
 const ADMIN_WHATSAPP = "5551989640834"; 
+const APP_VERSION = "1.1.0"; // << ETIQUETA DE VERSÃO
 
 const QUESTIONS = [
   // PERFIL E RELACIONAMENTO
@@ -48,8 +49,15 @@ const QUESTIONS = [
     id: "contato_filhos", 
     sec: "👨‍👩‍👧 Família", 
     q: "Tem contato com todos eles?", 
-    opts: ["Sim", "Não", "Com a maioria"],
+    opts: ["Sim", "Não"],
     showIf: { id: "tem_filhos", vals: ["Sim"] }
+  },
+  { 
+    id: "contato_menor", 
+    sec: "👨‍👩‍👧 Família", 
+    q: "Esses que você não tem contato são menores de idade?", 
+    opts: ["Sim", "Não"],
+    showIf: { id: "contato_filhos", vals: ["Não"] }
   },
 
   // PATRIMÔNIO
@@ -121,7 +129,7 @@ export default function App() {
 
   async function callIA(finalAnswers) {
     try {
-const res = await fetch("/api/anthropic", {
+      const res = await fetch("/api/anthropic", { // << USANDO O TÚNEL
         method: "POST",
         headers: { 
           "Content-Type": "application/json", 
@@ -178,7 +186,7 @@ const res = await fetch("/api/anthropic", {
   }
 
   if (screen === "home") return (
-    <div style={{padding:30, maxWidth:450, margin:"auto", fontFamily:"sans-serif", textAlign:"center", background:"#fff", borderRadius:20, marginTop:50, boxShadow:"0 10px 30px rgba(0,0,0,0.1)"}}>
+    <div style={{padding:30, maxWidth:450, margin:"auto", fontFamily:"sans-serif", textAlign:"center", background:"#fff", borderRadius:20, marginTop:50, boxShadow:"0 10px 30px rgba(0,0,0,0.1)", position: "relative"}}>
       <h1 style={{color: P, fontSize: 28, lineHeight: 1.3, marginTop: 0, marginBottom: 5}}>
         Bem vindo ao Portal da Consultoria Popular
       </h1>
@@ -194,6 +202,7 @@ const res = await fetch("/api/anthropic", {
       >
         Iniciar Análise Gratuita →
       </button>
+      <p style={{marginTop: 20, fontSize: 10, color: "#ccc"}}>Versão {APP_VERSION}</p>
     </div>
   );
 
@@ -228,4 +237,3 @@ const res = await fetch("/api/anthropic", {
 
   return null;
 }
-
