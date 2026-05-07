@@ -2,7 +2,7 @@ import { useState } from "react";
 
 const P = "#7F77DD"; 
 const ADMIN_WHATSAPP = "5551989640834"; 
-const APP_VERSION = "1.1.0-FULL-BLACK"; // Identificador único
+const APP_VERSION = "1.1.2-DEBUG"; 
 
 const QUESTIONS = [
   // PERFIL E RELACIONAMENTO
@@ -142,13 +142,16 @@ export default function App() {
           max_tokens: 1500, 
           messages: [{ 
             role: "user", 
-            content: `Você é Cândido Nathanael, especialista em Direito Popular. Analise: ${JSON.stringify(finalAnswers)}. Gere um plano direto com autoridade.` 
+            content: `Você é Cândido Nathanael, especialista em Direito Popular. Analise estes dados: ${JSON.stringify(finalAnswers)}. Gere um plano direto com autoridade.` 
           }] 
         })
       });
+      
+      if (res.status === 404) return "Erro 404: O túnel da Vercel não foi encontrado. Verifique o vercel.json.";
+      
       const data = await res.json();
-      return data.content ? data.content[0].text : "Erro ao gerar resposta.";
-    } catch (e) { return "Erro técnico na conexão com a IA."; }
+      return data.content ? data.content[0].text : `Erro da IA: ${JSON.stringify(data)}`;
+    } catch (e) { return `Erro de Conexão: ${e.message}`; }
   }
 
   const next = (val) => {
