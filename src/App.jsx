@@ -1,8 +1,8 @@
 import { useState } from "react";
 
-const P = "#7F77DD"; 
-const ADMIN_WHATSAPP = "5551989640834"; 
-const APP_VERSION = "1.2.0-PRO-SERVER"; 
+const P = "#7F77DD";
+const ADMIN_WHATSAPP = "5551989640834";
+const APP_VERSION = "1.3.0-STABLE";
 
 const QUESTIONS = [
   { id: "estado_civil", sec: "👤 Perfil", q: "Qual o seu estado civil?", opts: ["Solteiro(a)", "Casado(a)", "União estável", "Divorciado(a)", "Viúvo(a)", "Outro"] },
@@ -27,12 +27,72 @@ const QUESTIONS = [
   { id: "sonhos", sec: "⭐ Objetivo", q: "Seus sonhos após quitar dívidas?", multiple: true, opts: ["Casa", "Carro", "Viajar", "Investir", "Outros"] }
 ];
 
-function isVisible(q, answers) { 
+function isVisible(q, answers) {
   if (!q.showIf) return true;
   const dep = answers[q.showIf.id];
   if (Array.isArray(dep)) return dep.some(v => q.showIf.vals.includes(v));
   return q.showIf.vals.includes(dep);
 }
+
+function buildResumo(answers) {
+  return QUESTIONS
+    .filter(q => isVisible(q, answers) && answers[q.id])
+    .map(q => {
+      const val = Array.isArray(answers[q.id]) ? answers[q.id].join(", ") : answers[q.id];
+      return `- ${q.q} → ${val}`;
+    }).join("\n");
+}
+
+async function callIA(resumo, nome) {
+  try {
+    const res = await fetch("/api/anthropic", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1500,
+        messages: [{
+          role: "user",
+          content: `Você é Cândido Nathanael, especialista em Direito Popular e consultoria financeira no Brasil.
+
+Analise o perfil do cliente ${nome} e gere uma estratégia personalizada com:
+1. **Diagnóstico rápido** do perfil
+2. **Alertas importantes** (riscos jurídicos ou financeiros identificados)
+3. **Oportunidades** que ele pode estar perdendo
+4. **Próximos passos** práticos antes da consultoria
+
+Use linguagem clara, direta e encorajadora. Destaque em negrito os pontos mais importantes.
+
+Dados do cliente:
+${resumo}`
+        }]
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || "Erro na API");
+    return data.content?.map(b => b.text || "").join("") || "Não foi possível gerar a análise.";
+  } catch(e) {
+    console.error(e);
+    return null;
+  }
+}
+
+const s = {
+  wrap: { padding: 24, maxWidth: 460, margin: "40px auto", fontFamily: "'Segoe UI', sans-serif", background: "#fff", borderRadius: 20, boxShadow: "0 10px 30px rgba(0,0,0,0.08)" },
+  title: { color: P, fontSize: 26, lineHeight: 1.3, margin: "0 0 6px" },
+  sub: { color: "#888", fontSize: 15, margin: "0 0 24px" },
+  input: { width: "100%", padding: 14, marginBottom: 12, borderRadius: 10, border: "2px solid #eee", boxSizing: "border-box", fontSize: 15, outline: "none" },
+  btnMain: { width: "100%", padding: 16, background: P, color: "#fff", border: "none", borderRadius: 12, fontWeight: 700, cursor: "pointer", fontSize: 17, marginBottom: 0 },
+  btnWa: { width: "100%", padding: 18, background: "#25D366", color: "#fff", border: "none", borderRadius: 14, marginTop: 20, fontWeight: 700, fontSize: 16, cursor: "pointer" },
+  btnReset: { width: "100%", background: "none", border: "none", color: "#bbb", marginTop: 12, cursor: "pointer", fontSize: 14 },
+  opt: (sel) => ({ width: "100%", padding: 16, textAlign: "left", marginBottom: 10, borderRadius: 14, border: `2px solid ${sel ? P : "#eee"}`, background: sel ? "#F3F1FF" : "#fcfcfc", cursor: "pointer", color: sel ? "#3C3489" : "#444", fontSize: 15, fontWeight: sel ? 600 : 400 }),
+  ver: { marginTop: 28, fontSize: 10, color: "#ccc", textAlign: "center" },
+  bar: { height: 5, background: "#e5e2ff", borderRadius: 99, marginBottom: 20, overflow: "hidden" },
+  prog: (p) => ({ height: "100%", width: p + "%", background: P, borderRadius: 99, transition: "width .3s" }),
+  sec: { fontSize: 11, color: "#bbb", textTransform: "uppercase", letterSpacing: ".08em", marginBottom: 14 },
+  qText: { fontSize: 19, fontWeight: 700, color: "#1a1a2e", margin: "0 0 20px", lineHeight: 1.4 },
+  back: { background: "none", border: "none", color: P, cursor: "pointer", fontSize: 14, fontWeight: 600, padding: 0, marginBottom: 16 },
+};
 
 export default function App() {
   const [screen, setScreen] = useState("home");
@@ -42,106 +102,136 @@ export default function App() {
   const [plan, setPlan] = useState("");
   const [multiSel, setMultiSel] = useState([]);
   const [history, setHistory] = useState([]);
+  const [error, setError] = useState(false);
 
   const visibleQs = QUESTIONS.filter(q => isVisible(q, answers));
   const currentQ = visibleQs[idx];
-
-  async function callIA(finalAnswers) {
-    try {
-      const res = await fetch("/api/anthropic", { 
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          model: "claude-sonnet-4-6", // Modelo atualizado 2026
-          max_tokens: 1500, 
-          messages: [{ 
-            role: "user", 
-            content: `Você é Cândido Nathanael, especialista em Direito Popular. Analise estes dados: ${JSON.stringify(finalAnswers)}. Gere um plano direto com autoridade. Use negrito nos pontos principais.` 
-          }] 
-        })
-      });
-      
-      const data = await res.json();
-      if (!res.ok) return `Erro: ${data.error?.message || "Falha na API"}`;
-      return data.content[0].text;
-    } catch (e) { return `Falha na conexão: ${e.message}`; }
-  }
+  const progress = Math.round(((idx + 1) / visibleQs.length) * 100);
 
   const next = (val) => {
     let finalVal = val;
     if (currentQ.multiple) {
-      if (val === "NEXT_MULTI") finalVal = multiSel;
+      if (val === "NEXT_MULTI") finalVal = [...multiSel];
       else return;
     }
-    setHistory([...history, idx]);
+    setHistory(h => [...h, idx]);
     const upd = { ...answers, [currentQ.id]: finalVal };
     setAnswers(upd);
     setMultiSel([]);
-    if (idx + 1 < visibleQs.length) setIdx(idx + 1);
+    if (idx + 1 < QUESTIONS.filter(q => isVisible(q, upd)).length) setIdx(idx + 1);
     else finish(upd);
   };
 
   const back = () => {
-    if (history.length === 0) setScreen("home");
-    else {
-      const prevIdx = history[history.length - 1];
-      setHistory(history.slice(0, -1));
-      setIdx(prevIdx);
-    }
+    if (history.length === 0) { setScreen("home"); return; }
+    const prev = history[history.length - 1];
+    setHistory(h => h.slice(0, -1));
+    setIdx(prev);
   };
 
   const toggleMulti = (opt) => {
-    setMultiSel(prev => prev.includes(opt) ? prev.filter(i => i !== opt) : [...prev, opt]);
+    setMultiSel(p => p.includes(opt) ? p.filter(i => i !== opt) : [...p, opt]);
   };
 
   async function finish(upd) {
     setScreen("loading");
-    const result = await callIA(upd);
-    setPlan(result);
-    setScreen("result");
+    setError(false);
+    const resumo = buildResumo(upd);
+    const result = await callIA(resumo, client.nome);
+    if (!result) { setError(true); setScreen("result"); }
+    else { setPlan(result); setScreen("result"); }
   }
 
-  const VersionTag = () => <p style={{marginTop: 30, fontSize: 10, color: "#000", fontWeight: "bold"}}>Versão {APP_VERSION}</p>;
+  function renderPlan(text) {
+    return text
+      .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#3C3489">$1</strong>')
+      .replace(/^(\d+)\. (.+)$/gm, '<p style="margin:.5rem 0;font-weight:600;color:#444">$1. $2</p>')
+      .replace(/^- (.+)$/gm, '<li style="margin:4px 0;line-height:1.6">$1</li>')
+      .replace(/(<li.*<\/li>\n?)+/gs, m => `<ul style="padding-left:1.2rem;margin:.4rem 0">${m}</ul>`)
+      .replace(/\n\n/g, '<br/><br/>').replace(/\n/g, '<br/>');
+  }
+
+  function reset() {
+    setScreen("home"); setIdx(0); setHistory([]);
+    setAnswers({}); setMultiSel([]); setPlan(""); setError(false);
+  }
+
+  const VerTag = () => <p style={s.ver}>v{APP_VERSION}</p>;
 
   if (screen === "home") return (
-    <div style={{padding:30, maxWidth:450, margin:"auto", fontFamily:"sans-serif", textAlign:"center", background:"#fff", borderRadius:20, marginTop:50, boxShadow:"0 10px 30px rgba(0,0,0,0.1)"}}>
-      <h1 style={{color: P, fontSize: 28, lineHeight: 1.3, marginTop: 0, marginBottom: 5}}>Portal da Consultoria Popular</h1>
-      <p style={{color: "#666", fontSize: 16, marginBottom: 30}}>Análise de Perfil e Estratégia</p>
-      <input placeholder="Seu Nome" value={client.nome} onChange={e=>setClient({...client, nome:e.target.value})} style={{width:"100%", padding:16, marginBottom:12, borderRadius:10, border:"2px solid #eee", boxSizing:"border-box", fontSize: 16}} />
-      <input placeholder="WhatsApp" value={client.whatsapp} onChange={e=>setClient({...client, whatsapp:e.target.value})} style={{width:"100%", padding:16, marginBottom:25, borderRadius:10, border:"2px solid #eee", boxSizing:"border-box", fontSize: 16}} />
-      <button disabled={!client.nome || client.whatsapp.length < 10} onClick={()=>setScreen("quiz")} style={{width:"100%", padding:18, background:P, color:"#fff", border:"none", borderRadius:12, fontWeight:"bold", cursor:"pointer", fontSize:18}}>Iniciar Análise Gratuita →</button>
-      <VersionTag />
+    <div style={s.wrap}>
+      <h1 style={s.title}>Portal da Consultoria Popular</h1>
+      <p style={s.sub}>Análise de Perfil e Estratégia Jurídica</p>
+      <input style={s.input} placeholder="Seu Nome Completo" value={client.nome} onChange={e => setClient({ ...client, nome: e.target.value })} />
+      <input style={s.input} placeholder="WhatsApp (com DDD)" value={client.whatsapp} onChange={e => setClient({ ...client, whatsapp: e.target.value })} />
+      <button style={{ ...s.btnMain, opacity: (!client.nome || client.whatsapp.length < 10) ? 0.5 : 1 }}
+        disabled={!client.nome || client.whatsapp.length < 10}
+        onClick={() => setScreen("quiz")}>
+        Iniciar Análise Gratuita →
+      </button>
+      <VerTag />
     </div>
   );
 
   if (screen === "quiz") return (
-    <div style={{padding:25, maxWidth:450, margin:"auto", fontFamily:"sans-serif", background:"#fff", borderRadius:20, marginTop:40, boxShadow:"0 10px 30px rgba(0,0,0,0.05)", textAlign: "center"}}>
-      <div style={{display:"flex", justifyContent:"space-between", marginBottom:15}}>
-        <button onClick={back} style={{background:"none", border:"none", color:P, cursor:"pointer", fontSize:14, fontWeight:"bold"}}>← Voltar</button>
-        <p style={{color:"#999", fontSize:11, textTransform:"uppercase", margin:0}}>{currentQ.sec}</p>
+    <div style={s.wrap}>
+      <div style={s.bar}><div style={s.prog(progress)} /></div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+        <button style={s.back} onClick={back}>← Voltar</button>
+        <span style={s.sec}>{currentQ.sec} · {idx + 1}/{visibleQs.length}</span>
       </div>
-      <h2 style={{fontSize:20, marginBottom:25, color:"#333", textAlign: "left"}}>{currentQ.q}</h2>
-      {currentQ.opts.map(o => (
-        <button key={o} onClick={()=>currentQ.multiple ? toggleMulti(o) : next(o)} style={{width:"100%", padding:18, textAlign:"left", marginBottom:12, borderRadius:14, border:`2px solid ${multiSel.includes(o) ? P : "#eee"}`, background:multiSel.includes(o) ? "#F3F1FF" : "#fcfcfc", cursor:"pointer", color:"#444", fontSize:16}}>
-          {currentQ.multiple && (multiSel.includes(o) ? "✅ " : "⬜ ")} {o}
-        </button>
-      ))}
+      <p style={s.qText}>{currentQ.q}</p>
+      {currentQ.opts.map(o => {
+        const sel = multiSel.includes(o);
+        return (
+          <button key={o} onClick={() => currentQ.multiple ? toggleMulti(o) : next(o)} style={s.opt(sel)}>
+            {currentQ.multiple && <span style={{ marginRight: 10 }}>{sel ? "✅" : "⬜"}</span>}
+            {o}
+          </button>
+        );
+      })}
       {currentQ.multiple && (
-        <button onClick={()=>next("NEXT_MULTI")} disabled={multiSel.length === 0} style={{width:"100%", padding:18, background:P, color:"#fff", border:"none", borderRadius:12, marginTop:10, fontWeight:"bold", cursor:"pointer", fontSize:16}}>Continuar →</button>
+        <button onClick={() => next("NEXT_MULTI")} disabled={multiSel.length === 0}
+          style={{ ...s.btnMain, marginTop: 8, opacity: multiSel.length === 0 ? 0.4 : 1 }}>
+          Confirmar →
+        </button>
       )}
-      <VersionTag />
+      <VerTag />
     </div>
   );
 
-  if (screen === "loading") return <div style={{textAlign:"center", padding:100, fontFamily:"sans-serif"}}><h2>Analisando dados...</h2><VersionTag /></div>;
+  if (screen === "loading") return (
+    <div style={{ ...s.wrap, textAlign: "center", padding: 60 }}>
+      <div style={{ fontSize: 40, marginBottom: 16 }}>⏳</div>
+      <h2 style={{ color: P, margin: "0 0 8px" }}>Analisando seu perfil...</h2>
+      <p style={{ color: "#aaa", fontSize: 14 }}>Gerando sua estratégia personalizada.</p>
+      <VerTag />
+    </div>
+  );
 
   if (screen === "result") return (
-    <div style={{padding:25, maxWidth:580, margin:"auto", fontFamily:"sans-serif", background:"#fff", borderRadius:20, marginTop:20, boxShadow:"0 10px 30px rgba(0,0,0,0.1)", textAlign: "center"}}>
-      <h2 style={{color:P, textAlign: "left"}}>Estratégia para {client.nome}</h2>
-      <div style={{whiteSpace:"pre-wrap", lineHeight:1.7, color:"#444", fontSize:15, textAlign: "left"}}>{plan}</div>
-      <button onClick={()=>window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=Olá! Finalizei minha análise. Sou o ${client.nome}.`)} style={{width:"100%", padding:20, background:"#25D366", color:"#fff", border:"none", borderRadius:15, marginTop:25, fontWeight:"bold", fontSize:17, cursor:"pointer"}}>Agendar Consultoria (Ficha 2)</button>
-      <button onClick={()=>{setScreen("home"); setIdx(0); setHistory([]); setAnswers({});}} style={{width:"100%", background:"none", border:"none", color:"#999", marginTop:15, cursor:"pointer"}}>Fazer nova análise</button>
-      <VersionTag />
+    <div style={s.wrap}>
+      {error ? (
+        <div style={{ textAlign: "center", padding: "2rem 0" }}>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>⚠️</div>
+          <h3 style={{ color: "#c33", margin: "0 0 8px" }}>Erro ao gerar análise</h3>
+          <p style={{ color: "#888", fontSize: 14, marginBottom: 20 }}>Verifique sua conexão e tente novamente.</p>
+          <button style={s.btnMain} onClick={() => finish(answers)}>🔄 Tentar novamente</button>
+          <button style={s.btnReset} onClick={reset}>Começar do zero</button>
+        </div>
+      ) : (
+        <>
+          <h2 style={{ color: P, margin: "0 0 16px" }}>Estratégia para {client.nome}</h2>
+          <div style={{ lineHeight: 1.8, color: "#444", fontSize: 15 }}
+            dangerouslySetInnerHTML={{ __html: renderPlan(plan) }} />
+          <button style={s.btnWa}
+            onClick={() => window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(`Olá! Finalizei minha análise no Portal da Consultoria Popular. Sou ${client.nome}, WhatsApp: ${client.whatsapp}.`)}`)}>
+            💬 Agendar Consultoria via WhatsApp
+          </button>
+          <button style={s.btnReset} onClick={reset}>Fazer nova análise</button>
+        </>
+      )}
+      <VerTag />
     </div>
   );
 
