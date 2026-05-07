@@ -1,13 +1,18 @@
 import { useState } from "react";
 
-// --- CONFIGURAÇÕES ---
 const P = "#7F77DD"; 
 const ADMIN_WHATSAPP = "5551989640834"; 
 
 const QUESTIONS = [
-  // PERFIL E FAMÍLIA
   { id: "estado_civil", sec: "👤 Perfil", q: "Qual o seu estado civil?", opts: ["Solteiro(a)", "Casado(a)", "União estável", "Divorciado(a)", "Viúvo(a)", "Outro"] },
-  { id: "mora_filhos", sec: "👨‍👩‍👧 Família", q: "Mora com os filhos?", opts: ["Sim, com todos", "Sim, com alguns", "Não, com nenhum"] },
+  { id: "tem_filhos", sec: "👨‍👩‍👧 Família", q: "Você possui filhos?", opts: ["Sim", "Não"] },
+  { 
+    id: "mora_filhos", 
+    sec: "👨‍👩‍👧 Família", 
+    q: "Mora com os filhos?", 
+    opts: ["Sim, com todos", "Sim, com alguns", "Não, com nenhum"],
+    showIf: { id: "tem_filhos", vals: ["Sim"] } 
+  },
   { 
     id: "filho_menor", 
     sec: "👨‍👩‍👧 Família", 
@@ -22,14 +27,16 @@ const QUESTIONS = [
     opts: ["Paga pensão Judicial", "Paga pensão Espontânea", "Não paga pensão"], 
     showIf: { id: "filho_menor", vals: ["Sim"] } 
   },
-  { id: "contato_filhos", sec: "👨‍👩‍👧 Família", q: "Tem contato com todos eles?", opts: ["Sim", "Não", "Com a maioria"] },
-
-  // PATRIMÔNIO
+  { 
+    id: "contato_filhos", 
+    sec: "👨‍👩‍👧 Família", 
+    q: "Tem contato com todos eles?", 
+    opts: ["Sim", "Não", "Com a maioria"],
+    showIf: { id: "tem_filhos", vals: ["Sim"] }
+  },
   { id: "moradia", sec: "🏠 Patrimônio", q: "Qual sua situação de moradia?", opts: ["Própria quitada", "Própria financiada", "Alugada", "Emprestada/Ocupada"] },
   { id: "outros_imoveis", sec: "🏠 Patrimônio", q: "Você tem ou custeia outros imóveis?", opts: ["Sim", "Não"] },
   { id: "gasto_luz", sec: "🏠 Patrimônio", q: "Qual o valor médio da conta de luz?", opts: ["Até R$ 150", "R$ 150 a R$ 400", "R$ 400 a R$ 800", "Acima de R$ 800"] },
-
-  // MOBILIDADE
   { id: "tem_veiculo", sec: "🚗 Mobilidade", q: "Possui veículo?", opts: ["Sim", "Não"] },
   { 
     id: "tipos_veiculo", 
@@ -60,8 +67,6 @@ const QUESTIONS = [
     opts: ["Até R$ 300", "R$ 300 a R$ 600", "R$ 600 a R$ 1.200", "Acima de R$ 1.200"],
     showIf: { id: "tem_veiculo", vals: ["Sim"] }
   },
-
-  // FINANCEIRO E PROFISSIONAL
   { id: "situacao_prof", sec: "💼 Profissional", q: "Sua situação profissional atual:", multiple: true, opts: ["CLT", "Empresário", "Autônomo/Profissional Liberal", "Aposentado/Pensionista", "Desempregado"] },
   { id: "negativado", sec: "🏦 Financeiro", q: "Seu nome está negativado (SPC, Serasa ou outro banco de dados)?", opts: ["Sim", "Não", "Não sei informar"] },
   { id: "sonhos", sec: "⭐ Objetivo", q: "Quais seus sonhos após quitar as dívidas?", multiple: true, opts: ["Comprar/Reformar casa", "Trocar de carro", "Viajar com a família", "Investir no próprio negócio", "Outros"] }
@@ -79,9 +84,9 @@ export default function App() {
   const [client, setClient] = useState({ nome: "", whatsapp: "" });
   const [answers, setAnswers] = useState({});
   const [idx, setIdx] = useState(0);
-  const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState("");
   const [multiSel, setMultiSel] = useState([]);
+  const [history, setHistory] = useState([]); // Guarda os índices passados
 
   const visibleQs = QUESTIONS.filter(q => isVisible(q, answers));
   const currentQ = visibleQs[idx];
@@ -106,7 +111,7 @@ export default function App() {
           max_tokens: 1500, 
           messages: [{ 
             role: "user", 
-            content: `Você é Cândido, especialista em Direito Popular. Analise estes dados do cliente ${client.nome}: ${JSON.stringify(finalAnswers)}. Gere um plano de ação direto com autoridade. Foque em soluções para as dívidas e sonhos mencionados.` 
+            content: `Você é Cândido Nathanael, especialista em Direito Popular. Analise estes dados do cliente ${client.nome}: ${JSON.stringify(finalAnswers)}. Gere um plano de ação direto com autoridade e linguagem simples. Use **negrito**.` 
           }] 
         })
       });
@@ -121,64 +126,5 @@ export default function App() {
       if (val === "NEXT_MULTI") finalVal = multiSel;
       else return;
     }
+    setHistory([...history, idx]);
     const upd = { ...answers, [currentQ.id]: finalVal };
-    setAnswers(upd);
-    setMultiSel([]);
-    if (idx + 1 < visibleQs.length) setIdx(idx + 1);
-    else finish(upd);
-  };
-
-  const toggleMulti = (opt) => {
-    setMultiSel(prev => prev.includes(opt) ? prev.filter(i => i !== opt) : [...prev, opt]);
-  };
-
-  async function finish(upd) {
-    setScreen("loading");
-    const result = await callIA(upd);
-    setPlan(result);
-    setScreen("result");
-  }
-
-  if (screen === "home") return (
-    <div style={{padding:25, maxWidth:450, margin:"auto", fontFamily:"sans-serif", textAlign:"center", background:"#fff", borderRadius:20, marginTop:50, boxShadow:"0 10px 30px rgba(0,0,0,0.1)"}}>
-      <h1 style={{color:P}}>Bem vindo ao Portal da Consultoria Popular</h1>
-      <p style={{color:"#666", marginBottom:30}}>Análise de Perfil e Estratégia</p>
-      <input placeholder="Seu Nome" value={client.nome} onChange={e=>setClient({...client, nome:e.target.value})} style={{width:"100%", padding:14, marginBottom:10, borderRadius:10, border:"1px solid #ddd", boxSizing:"border-box"}} />
-      <input placeholder="WhatsApp (DDD + Número)" value={client.whatsapp} onChange={e=>setClient({...client, whatsapp:e.target.value})} style={{width:"100%", padding:14, marginBottom:20, borderRadius:10, border:"1px solid #ddd", boxSizing:"border-box"}} />
-      <button 
-        disabled={!client.nome || !validateWhatsApp(client.whatsapp)}
-        onClick={()=>setScreen("quiz")} 
-        style={{width:"100%", padding:18, background:(!client.nome || !validateWhatsApp(client.whatsapp)) ? "#ccc" : P, color:"#fff", border:"none", borderRadius:12, fontWeight:"bold", cursor:"pointer"}}
-      >
-        Iniciar Análise Gratuita →
-      </button>
-    </div>
-  );
-
-  if (screen === "quiz") return (
-    <div style={{padding:25, maxWidth:450, margin:"auto", fontFamily:"sans-serif", background:"#fff", borderRadius:20, marginTop:40, boxShadow:"0 10px 30px rgba(0,0,0,0.05)"}}>
-      <p style={{color:"#999", fontSize:11, textTransform:"uppercase"}}>{currentQ.sec}</p>
-      <h2 style={{fontSize:20, marginBottom:25}}>{currentQ.q}</h2>
-      {currentQ.opts.map(o => (
-        <button key={o} onClick={()=>currentQ.multiple ? toggleMulti(o) : next(o)} style={{width:"100%", padding:16, textAlign:"left", marginBottom:10, borderRadius:12, border:`1px solid ${multiSel.includes(o) ? P : "#eee"}`, background:multiSel.includes(o) ? "#F3F1FF" : "#fcfcfc", cursor:"pointer"}}>
-          {currentQ.multiple && (multiSel.includes(o) ? "✅ " : "⬜ ")} {o}
-        </button>
-      ))}
-      {currentQ.multiple && (
-        <button onClick={()=>next("NEXT_MULTI")} disabled={multiSel.length === 0} style={{width:"100%", padding:16, background:P, color:"#fff", border:"none", borderRadius:12, marginTop:10, fontWeight:"bold", cursor:"pointer"}}>Continuar</button>
-      )}
-    </div>
-  );
-
-  if (screen === "loading") return <div style={{textAlign:"center", padding:100}}><h2>Gerando Relatório...</h2></div>;
-
-  if (screen === "result") return (
-    <div style={{padding:25, maxWidth:550, margin:"auto", fontFamily:"sans-serif", background:"#fff", borderRadius:20, marginTop:20, boxShadow:"0 10px 30px rgba(0,0,0,0.1)"}}>
-      <h2 style={{color:P}}>Estratégia para {client.nome}</h2>
-      <div style={{whiteSpace:"pre-wrap", lineHeight:1.6, color:"#444"}}>{plan}</div>
-      <button onClick={()=>window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=Olá Cândido! Finalizei minha análise. Sou o ${client.nome}.`)} style={{width:"100%", padding:20, background:"#25D366", color:"#fff", border:"none", borderRadius:14, marginTop:25, fontWeight:"bold", cursor:"pointer"}}>Agendar Consultoria (Ficha 2)</button>
-    </div>
-  );
-
-  return null;
-}
