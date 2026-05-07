@@ -2,7 +2,7 @@ import { useState } from "react";
 
 const P = "#7F77DD"; 
 const ADMIN_WHATSAPP = "5551989640834"; 
-const APP_VERSION = "1.1.0"; // << ETIQUETA DE VERSÃO
+const APP_VERSION = "1.1.0-FULL-BLACK"; // Identificador único
 
 const QUESTIONS = [
   // PERFIL E RELACIONAMENTO
@@ -97,7 +97,7 @@ const QUESTIONS = [
     showIf: { id: "tem_veiculo", vals: ["Sim"] }
   },
 
-  // PROFISSIONAL E OBJETIVO
+  // PROFISSIONAL E FINANCEIRO
   { id: "situacao_prof", sec: "💼 Profissional", q: "Sua situação profissional atual:", multiple: true, opts: ["CLT", "Empresário", "Autônomo/Profissional Liberal", "Aposentado/Pensionista", "Desempregado"] },
   { id: "negativado", sec: "🏦 Financeiro", q: "Seu nome está negativado (SPC, Serasa ou outro banco de dados)?", opts: ["Sim", "Não", "Não sei informar"] },
   { id: "sonhos", sec: "⭐ Objetivo", q: "Quais seus sonhos após quitar as dívidas?", multiple: true, opts: ["Comprar/Reformar casa", "Trocar de carro", "Viajar com a família", "Investir no próprio negócio", "Outros"] }
@@ -129,7 +129,7 @@ export default function App() {
 
   async function callIA(finalAnswers) {
     try {
-      const res = await fetch("/api/anthropic", { // << USANDO O TÚNEL
+      const res = await fetch("/api/anthropic", { 
         method: "POST",
         headers: { 
           "Content-Type": "application/json", 
@@ -142,7 +142,7 @@ export default function App() {
           max_tokens: 1500, 
           messages: [{ 
             role: "user", 
-            content: `Você é Cândido Nathanael, especialista em Direito Popular. Analise estes dados: ${JSON.stringify(finalAnswers)}. Gere um plano direto com autoridade. Use negrito nos pontos principais.` 
+            content: `Você é Cândido Nathanael, especialista em Direito Popular. Analise: ${JSON.stringify(finalAnswers)}. Gere um plano direto com autoridade.` 
           }] 
         })
       });
@@ -185,34 +185,26 @@ export default function App() {
     setScreen("result");
   }
 
+  const VersionTag = () => <p style={{marginTop: 30, fontSize: 10, color: "#000", fontWeight: "bold"}}>Versão {APP_VERSION}</p>;
+
   if (screen === "home") return (
-    <div style={{padding:30, maxWidth:450, margin:"auto", fontFamily:"sans-serif", textAlign:"center", background:"#fff", borderRadius:20, marginTop:50, boxShadow:"0 10px 30px rgba(0,0,0,0.1)", position: "relative"}}>
-      <h1 style={{color: P, fontSize: 28, lineHeight: 1.3, marginTop: 0, marginBottom: 5}}>
-        Bem vindo ao Portal da Consultoria Popular
-      </h1>
-      <p style={{color: "#666", fontSize: 16, marginBottom: 30}}>
-        Análise de Perfil e Estratégia
-      </p>
+    <div style={{padding:30, maxWidth:450, margin:"auto", fontFamily:"sans-serif", textAlign:"center", background:"#fff", borderRadius:20, marginTop:50, boxShadow:"0 10px 30px rgba(0,0,0,0.1)"}}>
+      <h1 style={{color: P, fontSize: 28, lineHeight: 1.3, marginTop: 0, marginBottom: 5}}>Portal da Consultoria Popular</h1>
+      <p style={{color: "#666", fontSize: 16, marginBottom: 30}}>Análise de Perfil e Estratégia</p>
       <input placeholder="Seu Nome" value={client.nome} onChange={e=>setClient({...client, nome:e.target.value})} style={{width:"100%", padding:16, marginBottom:12, borderRadius:10, border:"2px solid #eee", boxSizing:"border-box", fontSize: 16}} />
       <input placeholder="WhatsApp (DDD + Número)" value={client.whatsapp} onChange={e=>setClient({...client, whatsapp:e.target.value})} style={{width:"100%", padding:16, marginBottom:25, borderRadius:10, border:"2px solid #eee", boxSizing:"border-box", fontSize: 16}} />
-      <button 
-        disabled={!client.nome || !validateWhatsApp(client.whatsapp)}
-        onClick={()=>setScreen("quiz")} 
-        style={{width:"100%", padding:18, background:(!client.nome || !validateWhatsApp(client.whatsapp)) ? "#ccc" : P, color:"#fff", border:"none", borderRadius:12, fontWeight:"bold", cursor:(!client.nome || !validateWhatsApp(client.whatsapp)) ? "not-allowed" : "pointer", fontSize:18}}
-      >
-        Iniciar Análise Gratuita →
-      </button>
-      <p style={{marginTop: 20, fontSize: 10, color: "#ccc"}}>Versão {APP_VERSION}</p>
+      <button disabled={!client.nome || !validateWhatsApp(client.whatsapp)} onClick={()=>setScreen("quiz")} style={{width:"100%", padding:18, background:(!client.nome || !validateWhatsApp(client.whatsapp)) ? "#ccc" : P, color:"#fff", border:"none", borderRadius:12, fontWeight:"bold", cursor:"pointer", fontSize:18}}>Iniciar Análise Gratuita →</button>
+      <VersionTag />
     </div>
   );
 
   if (screen === "quiz") return (
-    <div style={{padding:25, maxWidth:450, margin:"auto", fontFamily:"sans-serif", background:"#fff", borderRadius:20, marginTop:40, boxShadow:"0 10px 30px rgba(0,0,0,0.05)"}}>
+    <div style={{padding:25, maxWidth:450, margin:"auto", fontFamily:"sans-serif", background:"#fff", borderRadius:20, marginTop:40, boxShadow:"0 10px 30px rgba(0,0,0,0.05)", textAlign: "center"}}>
       <div style={{display:"flex", justifyContent:"space-between", marginBottom:15}}>
         <button onClick={back} style={{background:"none", border:"none", color:P, cursor:"pointer", fontSize:14, fontWeight:"bold"}}>← Voltar</button>
         <p style={{color:"#999", fontSize:11, textTransform:"uppercase", margin:0}}>{currentQ.sec}</p>
       </div>
-      <h2 style={{fontSize:20, marginBottom:25, color:"#333"}}>{currentQ.q}</h2>
+      <h2 style={{fontSize:20, marginBottom:25, color:"#333", textAlign: "left"}}>{currentQ.q}</h2>
       {currentQ.opts.map(o => (
         <button key={o} onClick={()=>currentQ.multiple ? toggleMulti(o) : next(o)} style={{width:"100%", padding:18, textAlign:"left", marginBottom:12, borderRadius:14, border:`2px solid ${multiSel.includes(o) ? P : "#eee"}`, background:multiSel.includes(o) ? "#F3F1FF" : "#fcfcfc", cursor:"pointer", color:"#444", fontSize:16}}>
           {currentQ.multiple && (multiSel.includes(o) ? "✅ " : "⬜ ")} {o}
@@ -221,17 +213,24 @@ export default function App() {
       {currentQ.multiple && (
         <button onClick={()=>next("NEXT_MULTI")} disabled={multiSel.length === 0} style={{width:"100%", padding:18, background:P, color:"#fff", border:"none", borderRadius:12, marginTop:10, fontWeight:"bold", cursor:"pointer", fontSize:16}}>Continuar →</button>
       )}
+      <VersionTag />
     </div>
   );
 
-  if (screen === "loading") return <div style={{textAlign:"center", padding:100}}><h2>Analisando dados...</h2></div>;
+  if (screen === "loading") return (
+    <div style={{textAlign:"center", padding:100, fontFamily:"sans-serif"}}>
+      <h2>Analisando dados...</h2>
+      <VersionTag />
+    </div>
+  );
 
   if (screen === "result") return (
-    <div style={{padding:25, maxWidth:580, margin:"auto", fontFamily:"sans-serif", background:"#fff", borderRadius:20, marginTop:20, boxShadow:"0 10px 30px rgba(0,0,0,0.1)"}}>
-      <h2 style={{color:P}}>Estratégia para {client.nome}</h2>
-      <div style={{whiteSpace:"pre-wrap", lineHeight:1.7, color:"#444", fontSize:15}}>{plan}</div>
+    <div style={{padding:25, maxWidth:580, margin:"auto", fontFamily:"sans-serif", background:"#fff", borderRadius:20, marginTop:20, boxShadow:"0 10px 30px rgba(0,0,0,0.1)", textAlign: "center"}}>
+      <h2 style={{color:P, textAlign: "left"}}>Estratégia para {client.nome}</h2>
+      <div style={{whiteSpace:"pre-wrap", lineHeight:1.7, color:"#444", fontSize:15, textAlign: "left"}}>{plan}</div>
       <button onClick={()=>window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=Olá! Finalizei minha análise. Sou o ${client.nome}.`)} style={{width:"100%", padding:20, background:"#25D366", color:"#fff", border:"none", borderRadius:15, marginTop:25, fontWeight:"bold", fontSize:17, cursor:"pointer"}}>Agendar Consultoria (Ficha 2)</button>
       <button onClick={()=>{setScreen("home"); setIdx(0); setHistory([]); setAnswers({});}} style={{width:"100%", background:"none", border:"none", color:"#999", marginTop:15, cursor:"pointer"}}>Fazer nova análise</button>
+      <VersionTag />
     </div>
   );
 
