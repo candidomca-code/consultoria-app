@@ -158,14 +158,14 @@ export default function App() {
       <div style={{background:P, color:"#fff", padding:"25px 15px", borderRadius:20, marginBottom:30}}>
         
         {/* << AJUSTE O TÍTULO ABAIXO >> */}
-        <h1 style={{fontSize:16, margin:0, fontWeight:"bold"}}>
+        <h1 style={{fontSize:20, margin:0, fontWeight:"bold"}}>
             Bem vindo ao Portal da Consultoria Popular
         </h1>
 
       </div>
       
       {/* << AJUSTE O SUBTÍTULO ABAIXO >> */}
-      <p style={{color:"#333", fontSize:14, fontWeight:"bold", marginBottom:30}}>
+      <p style={{color:"#333", fontSize:16, fontWeight:"bold", marginBottom:30}}>
           Análise de Perfil e Estratégia
       </p>
       
